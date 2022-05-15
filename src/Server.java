@@ -10,6 +10,32 @@ import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+/**
+ * 题目一的服务器类
+ * <p>
+ * 实现的功能如下：
+ * 1. 简单的GET功能{@link #getMethod}
+ * 2. 简单的POST功能{@link #postMethod}
+ *
+ * 回复报文有 4 种状态码
+ *
+ * 1. 200 OK
+ *
+ * 2. 404 Not Found
+ *
+ * 3. 500 Internal Server Error
+ *
+ * 4. 501 Not Implemented
+ *
+ * 来表示可能存在的 4 中状态结果
+ *
+ *
+ * @version 1.0.2
+ * @author 郑勤
+ * @since jdk11.0.6
+ *
+ */
+
 public class Server {
 
 
@@ -41,10 +67,14 @@ public class Server {
 
 
     public static void main( String[] args ) throws IOException {
+
         ServerSocket serverSocket = new ServerSocket(PORT);
+
         while (flag.get() == 1){
+
             Socket socket = serverSocket.accept();
             System.out.println("Success");
+
             new Thread(()->{
                 try{
                     InputStream inputStream = socket.getInputStream();
@@ -80,6 +110,7 @@ public class Server {
                         case "TRACE":
                             break;
                         default:
+                            response(socket.getOutputStream(), 501, CONTENT_TYPE_TEXT, STATUS_CODE_501);
                             break;
                     }
 
@@ -90,6 +121,15 @@ public class Server {
             }).start();
         }
     }
+
+    /**
+     * 对HTTP的请求报做出回复，写回复报给请求对象
+     *
+     * @param outputStream socket的输出流{@link java.io.OutputStream}
+     * @param status 回复报的状态码
+     * @param type 回复报的文档类型
+     * @param status_code 状态码所对应的说明
+     */
 
     private static void response( @NotNull OutputStream outputStream, int status, String type, String status_code)
             throws IOException {
@@ -102,6 +142,19 @@ public class Server {
 
     }
 
+    /**
+     * HTTP中的GET方法，实现的功能有：
+     *
+     * 1. 浏览器中输入在浏览器中输入localhost:8081/index.html能显示自己的学号信息;
+     *
+     * 2. 在浏览器中输入localhost:8081下其他无效路径，浏览器显示404 not found;
+     *
+     * 3. 在浏览器中输入localhost:8081/shutdown能使服务器关闭;
+     *
+     * @param socket 当前连接的socket{@link java.net.Socket}
+     * @param url 请求网页的URL
+     */
+
     private static void getMethod( Socket socket,@NotNull String url) throws IOException {
 
         if(url.equals(INDEX_PAGE)) {
@@ -111,7 +164,7 @@ public class Server {
 
             FileInputStream fileInputStream = new FileInputStream("webpage/" + url);
             byte[] data = new byte[1024];
-            int eof = 0;
+            int eof;
             while ((eof = fileInputStream.read(data)) != -1)
                 outputStream.write(data, 0, eof);
             fileInputStream.close();
@@ -131,6 +184,13 @@ public class Server {
         }
     }
 
+    /**
+     * HTTP中的HEAD方法，与GET方法类似，但只返回回复报文头，不返回具体内容
+     *
+     * @param socket 当前连接的socket{@link java.net.Socket}
+     * @param url 请求网页的URL
+     */
+
     private static void headMethod( @NotNull Socket socket,@NotNull String url) throws IOException {
 
         OutputStream outputStream = socket.getOutputStream();
@@ -140,6 +200,21 @@ public class Server {
             response(outputStream, 404, CONTENT_TYPE_TEXT, STATUS_CODE_404);
 
     }
+
+    /**
+     * HTTP中的POST方法，实现的功能有：
+     *
+     * 1. HTML原生表单的数据提交
+     *
+     * 2. JSON的数据提交
+     *
+     * 3. TEXT的数据提交
+     *
+     * 由于没有数据库，使用POST方法提交的数据没有用处，只能打印出来，表示POST方法是可行的
+     *
+     * @param socket 当前连接的socket{@link java.net.Socket}
+     * @param bufferedReader 用于读取当前缓冲区中的内容{@link java.io.BufferedReader}
+     */
 
     private static void postMethod( Socket socket ,@NotNull BufferedReader bufferedReader )
             throws IOException {
