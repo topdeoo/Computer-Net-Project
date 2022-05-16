@@ -6,26 +6,22 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
-import java.util.HashMap;
+import java.util.Hashtable;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
 /**
  * 题目一的服务器类
  * <p>
- * 实现的功能如下：
- * 1. 简单的GET功能{@link #getMethod}
- * 2. 简单的POST功能{@link #postMethod}
+ * 实现的功能如下：<br/>
+ * 1. 简单的GET功能{@link #getMethod}<br/>
+ * 2. 简单的POST功能{@link #postMethod}<br/>
  *
- * 回复报文有 4 种状态码
- *
- * 1. 200 OK
- *
- * 2. 404 Not Found
- *
- * 3. 500 Internal Server Error
- *
- * 4. 501 Not Implemented
+ * 回复报文有 4 种状态码<br/>
+ * 1. 200 OK<br/>
+ * 2. 404 Not Found<br/>
+ * 3. 500 Internal Server Error<br/>
+ * 4. 501 Not Implemented<br/>
  *
  * 来表示可能存在的 4 中状态结果
  *
@@ -39,30 +35,13 @@ import java.util.regex.Pattern;
 public class Server {
 
 
+    /* 通信端口 */
     private static final int PORT = 8081;
 
-    private static final String INDEX_PAGE = "index.html";
+    /* 模拟服务器数据库 */
+    private static Hashtable<String, String> sqlData = new Hashtable<>();
 
-    private static final String EXIT = "shutdown";
-
-    private static final String CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
-
-    private static final String CONTENT_TYPE_FILE = "multipart/form-data";
-
-    private static final String CONTENT_TYPE_JSON = "application/json";
-
-    private static final String CONTENT_TYPE_HTML = "text/html";
-
-    private static final String CONTENT_TYPE_TEXT = "text/plain";
-
-    private static final String STATUS_CODE_500 = "Internal Server Error";
-
-    private static final String STATUS_CODE_200 = "OK";
-
-    private static final String STATUS_CODE_404 = "Not Found";
-
-    private static final String STATUS_CODE_501 = "Not Implemented";
-
+    /* 服务器的运行状态 */
     static AtomicInteger flag = new AtomicInteger(1);
 
 
@@ -100,7 +79,10 @@ public class Server {
                             break;
 
                         case "PUT":
+
+                            putMethod(socket, bufferedReader);
                             break;
+
                         case "DELETE":
                             break;
                         case "CONNECT":
@@ -110,7 +92,8 @@ public class Server {
                         case "TRACE":
                             break;
                         default:
-                            response(socket.getOutputStream(), 501, CONTENT_TYPE_TEXT, STATUS_CODE_501);
+                            response(socket.getOutputStream(), 501,
+                                    Utils.CONTENT_TYPE_TEXT, Utils.STATUS_CODE_501);
                             break;
                     }
 
@@ -121,6 +104,7 @@ public class Server {
             }).start();
         }
     }
+
 
     /**
      * 对HTTP的请求报做出回复，写回复报给请求对象
@@ -143,24 +127,21 @@ public class Server {
     }
 
     /**
-     * HTTP中的GET方法，实现的功能有：
-     *
-     * 1. 浏览器中输入在浏览器中输入localhost:8081/index.html能显示自己的学号信息;
-     *
-     * 2. 在浏览器中输入localhost:8081下其他无效路径，浏览器显示404 not found;
-     *
-     * 3. 在浏览器中输入localhost:8081/shutdown能使服务器关闭;
+     * HTTP中的GET方法，实现的功能有：<br/>
+     * 1. 浏览器中输入在浏览器中输入localhost:8081/index.html能显示自己的学号信息;<br/>
+     * 2. 在浏览器中输入localhost:8081下其他无效路径，浏览器显示404 not found;<br/>
+     * 3. 在浏览器中输入localhost:8081/shutdown能使服务器关闭;<br/>
      *
      * @param socket 当前连接的socket{@link java.net.Socket}
      * @param url 请求网页的URL
      */
 
-    private static void getMethod( Socket socket,@NotNull String url) throws IOException {
+    private static void getMethod( Socket socket ,@NotNull String url ) throws IOException {
 
-        if(url.equals(INDEX_PAGE)) {
+        if(url.equals(Utils.INDEX_PAGE)) {
             OutputStream outputStream = socket.getOutputStream();
 
-            response(outputStream, 200, CONTENT_TYPE_HTML, STATUS_CODE_200);
+            response(outputStream, 200, Utils.CONTENT_TYPE_HTML, Utils.STATUS_CODE_200);
 
             FileInputStream fileInputStream = new FileInputStream("webpage/" + url);
             byte[] data = new byte[1024];
@@ -170,14 +151,14 @@ public class Server {
             fileInputStream.close();
             socket.close();
         }
-        else if(url.equals(EXIT)){
+        else if(url.equals(Utils.EXIT)){
             flag.set(0);
             socket.close();
         }
         else {
             OutputStream outputStream = socket.getOutputStream();
 
-            response(outputStream, 404, CONTENT_TYPE_HTML, STATUS_CODE_404);
+            response(outputStream, 404, Utils.CONTENT_TYPE_HTML, Utils.STATUS_CODE_404);
 
             /* outputStream.write(NOT_FOUND, 0, NOT_FOUND.length);*/
             socket.close();
@@ -191,25 +172,21 @@ public class Server {
      * @param url 请求网页的URL
      */
 
-    private static void headMethod( @NotNull Socket socket,@NotNull String url) throws IOException {
+    private static void headMethod( @NotNull Socket socket ,@NotNull String url ) throws IOException {
 
         OutputStream outputStream = socket.getOutputStream();
-        if(url.equals(INDEX_PAGE))
-            response(outputStream, 200, CONTENT_TYPE_HTML, STATUS_CODE_200);
+        if(url.equals(Utils.INDEX_PAGE))
+            response(outputStream, 200, Utils.CONTENT_TYPE_HTML, Utils.STATUS_CODE_200);
         else
-            response(outputStream, 404, CONTENT_TYPE_TEXT, STATUS_CODE_404);
+            response(outputStream, 404, Utils.CONTENT_TYPE_TEXT, Utils.STATUS_CODE_404);
 
     }
 
     /**
-     * HTTP中的POST方法，实现的功能有：
-     *
-     * 1. HTML原生表单的数据提交
-     *
-     * 2. JSON的数据提交
-     *
-     * 3. TEXT的数据提交
-     *
+     * HTTP中的POST方法，实现的功能有：<br/>
+     * 1. HTML原生表单的数据提交<br/>
+     * 2. JSON的数据提交<br/>
+     * 3. TEXT的数据提交<br/>
      * 由于没有数据库，使用POST方法提交的数据没有用处，只能打印出来，表示POST方法是可行的
      *
      * @param socket 当前连接的socket{@link java.net.Socket}
@@ -244,7 +221,7 @@ public class Server {
             isSuccess = 0;
 
         if(isSuccess == 0){
-            response(socket.getOutputStream(), 500, CONTENT_TYPE_FORM, STATUS_CODE_500);
+            response(socket.getOutputStream(), 500, Utils.CONTENT_TYPE_FORM, Utils.STATUS_CODE_500);
             return;
         }
 
@@ -253,46 +230,87 @@ public class Server {
         String[] t = type_charset.split(";");
         String type = t[0];         //ignore charset
         switch (type){
-            case CONTENT_TYPE_FORM:
+            case Utils.CONTENT_TYPE_FORM:
 
                 String[] data = total_data.split("&");
-                HashMap<String, String> hashMap = new HashMap<>();
+
                 for (String data_i : data) {
                     String[] key_value = data_i.split("=");
-                    hashMap.put(key_value[0] ,key_value[1]);
+                    if (sqlData.containsKey(key_value[0]))
+                        sqlData.replace(key_value[0], key_value[1]);
+                    else
+                        sqlData.put(key_value[0], key_value[1]);
                 }
-                // 输出成功代表POST成功
-                for(String key: hashMap.keySet())
-                    System.out.println(key+"=>"+hashMap.get(key));
 
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_FORM, STATUS_CODE_200);
+                OutputStream outputStream = socket.getOutputStream();
+                response(outputStream, 200, Utils.CONTENT_TYPE_FORM, Utils.STATUS_CODE_200);
+
 
                 break;
-            case CONTENT_TYPE_FILE:
+            case Utils.CONTENT_TYPE_FILE:
                 // 可以提交文件，但是这个你也没法查看文件啊。。。
                 System.out.println("POST SUCCESS");
 
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_FILE, STATUS_CODE_200);
+                response(socket.getOutputStream(), 200, Utils.CONTENT_TYPE_FILE, Utils.STATUS_CODE_200);
 
                 break;
-            case CONTENT_TYPE_JSON:
+            case Utils.CONTENT_TYPE_JSON:
 
                 JsonObject jsonObject = JsonParser.parseString(total_data).getAsJsonObject();
                 System.out.println(jsonObject);
 
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_JSON, STATUS_CODE_200);
+                response(socket.getOutputStream(), 200, Utils.CONTENT_TYPE_JSON, Utils.STATUS_CODE_200);
 
                 break;
-            case CONTENT_TYPE_TEXT:
+            case Utils.CONTENT_TYPE_TEXT:
 
                 System.out.println(total_data);
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_TEXT, STATUS_CODE_200);
+                response(socket.getOutputStream(), 200, Utils.CONTENT_TYPE_TEXT, Utils.STATUS_CODE_200);
 
                 break;
             default:
-                response(socket.getOutputStream(), 501, CONTENT_TYPE_TEXT, STATUS_CODE_501);
+                response(socket.getOutputStream(), 501, Utils.CONTENT_TYPE_TEXT, Utils.STATUS_CODE_501);
                 break;
         }
+
+        socket.close();
+    }
+
+
+    /**
+     * HTTP中的PUT方法，形式上与POST类似，但是PUT方法不会产生副作用<br/>
+     * 这里实现的PUT方法只能够传输Markdown文件，将其转化为HTML文档并返回给客户端<br/>
+     * 可以当做实现了一个文件转化(Markdown2Html)
+     *
+     * @param socket 当前连接的socket{@link java.net.Socket}
+     * @param bufferedReader 用于读取当前缓冲区中的内容{@link java.io.BufferedReader}
+     */
+    private static void putMethod( Socket socket ,@NotNull BufferedReader bufferedReader )
+            throws IOException {
+
+        int length = 0;
+        int isSuccess = 1;
+        String temp;
+        Pattern patternLength = Pattern.compile("Content-Length.*");
+        while (!(temp = bufferedReader.readLine()).equals("")) {
+            if(patternLength.matcher(temp).matches()){
+                length = Integer.parseInt(temp.split(":")[1].substring(1));
+            }
+        }
+
+        char[] buff = new char[length];
+        if(bufferedReader.read(buff, 0, length) < 0)
+            isSuccess = 0;
+
+        if(isSuccess == 0){
+            response(socket.getOutputStream(), 500, Utils.CONTENT_TYPE_FORM, Utils.STATUS_CODE_500);
+            return;
+        }
+
+        OutputStream outputStream = socket.getOutputStream();
+        String HtmlContent =  Utils.mdToHtml(new String(buff));
+        response(outputStream, 200, Utils.CONTENT_TYPE_HTML, Utils.STATUS_CODE_200);
+        outputStream.write(HtmlContent.getBytes(StandardCharsets.UTF_8));
 
         socket.close();
     }
