@@ -69,17 +69,8 @@ public class Server {
                             postMethod(socket,bufferedReader);
                             break;
 
-                        case "PUT":
-                            break;
-                        case "DELETE":
-                            break;
-                        case "CONNECT":
-                            break;
-                        case "OPTIONS":
-                            break;
-                        case "TRACE":
-                            break;
                         default:
+                            response(socket.getOutputStream(), 501, CONTENT_TYPE_TEXT, STATUS_CODE_501);
                             break;
                     }
 
@@ -126,7 +117,6 @@ public class Server {
 
             response(outputStream, 404, CONTENT_TYPE_HTML, STATUS_CODE_404);
 
-            /* outputStream.write(NOT_FOUND, 0, NOT_FOUND.length);*/
             socket.close();
         }
     }
