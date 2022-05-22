@@ -88,8 +88,8 @@ public class Server {
         outputStream.write(("HTTP/1.1 "+status+" "+status_code+"\r\n").getBytes(StandardCharsets.UTF_8));
         outputStream.write("Server: Java/jdk11.0\r\n".getBytes(StandardCharsets.UTF_8));
         outputStream.write(("Content-Type: "+type+"\r\n").getBytes(StandardCharsets.UTF_8));
-        outputStream.write("Transfer-Encoding: UTF-8\r\n".getBytes(StandardCharsets.UTF_8));
-        outputStream.write(("Date:"+ new Date()+"\r\n\r\n").getBytes(StandardCharsets.UTF_8));
+        /*outputStream.write("Transfer-Encoding: UTF-8\r\n".getBytes(StandardCharsets.UTF_8));*/
+        outputStream.write(("Date:"+ new Date()+"\r\n").getBytes(StandardCharsets.UTF_8));
 
     }
 
@@ -103,12 +103,17 @@ public class Server {
             response(outputStream, 200, CONTENT_TYPE_HTML, STATUS_CODE_200);
 
             FileInputStream fileInputStream = new FileInputStream("webpage/" + url);
+
+            outputStream.write(("Content-Length: " + fileInputStream.available() + "\r\n\r\n").
+                    getBytes(StandardCharsets.UTF_8));
+
             byte[] data = new byte[1024];
             int eof = 0;
             while ((eof = fileInputStream.read(data)) != -1)
                 outputStream.write(data, 0, eof);
-            fileInputStream.close();
+
             socket.close();
+            fileInputStream.close();
         }
         else if(url.equals(EXIT)){
             flag.set(0);
