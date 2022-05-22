@@ -104,6 +104,8 @@ public class Server {
 
     private static void getMethod( Socket socket,@NotNull String url) throws IOException {
 
+        url = url.split("/")[3];
+
         if(url.equals(INDEX_PAGE)) {
             OutputStream outputStream = socket.getOutputStream();
 
