@@ -104,8 +104,6 @@ class Handler implements Runnable{
                 osServer.write(new String(post).getBytes(StandardCharsets.UTF_8));
             }
 
-            osServer.flush();
-
             contents.clear();
 
             InputStream isServer = toServer.getInputStream();
@@ -121,10 +119,12 @@ class Handler implements Runnable{
             for(String s: contents)
                 osClient.write((s+"\r\n").getBytes(StandardCharsets.UTF_8));
             osClient.write("\r\n".getBytes(StandardCharsets.UTF_8));
+
             if(content_length > 0){
-                char[] post = new char[content_length];
-                assert brClient.read(post, 0, content_length) > 0;
-                osServer.write(new String(post).getBytes(StandardCharsets.UTF_8));
+                byte[] post = new byte[content_length];
+                if(isServer.read(post, 0, content_length) >= 0)
+                    osClient.write(post);
+
             }
 
             clientSocket.close();
