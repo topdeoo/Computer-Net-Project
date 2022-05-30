@@ -126,6 +126,8 @@ public class Server {
         OutputStream outputStream = socket.getOutputStream();
         if(url.equals(INDEX_PAGE))
             response(outputStream, 200, CONTENT_TYPE_HTML, STATUS_CODE_200);
+        else if(url.equals(EXIT))
+            flag.set(0);
         else
             response(outputStream, 404, CONTENT_TYPE_TEXT, STATUS_CODE_404);
 
