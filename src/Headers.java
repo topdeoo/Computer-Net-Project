@@ -1,6 +1,7 @@
+import org.jetbrains.annotations.NotNull;
+
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.Hashtable;
 
 public class Headers {
 
@@ -10,7 +11,9 @@ public class Headers {
 
     private String version;
 
-    private Map<String, String> headMap = new HashMap<>();
+    private Hashtable<String, String> headMap = new Hashtable<>();
+
+    private Hashtable<String, String> data = new Hashtable<>();
 
     public Headers(){}
 
@@ -26,9 +29,21 @@ public class Headers {
 
     public void setVersion( String version ){this.version = version;}
 
-    public void put(String K, String V){headMap.put(K, V);}
+    public void putHeadMap( String K,String V){headMap.put(K, V);}
 
-    public String get(String K){return headMap.get(K);}
+    public String getHeadMap( String K){return headMap.get(K);}
+
+    public String getData(String K) {
+        return data.get(K);
+    }
+
+    public String getData(){
+        return data.toString();
+    }
+
+    public void putData(String K, String V) {
+        data.put(K, V);
+    }
 
     @Override
     public String toString() {
@@ -36,11 +51,12 @@ public class Headers {
                 "method='" + method + '\'' +
                 ", url='" + url + '\'' +
                 ", version='" + version + '\'' +
-                ", headerMap=" + headMap +
+                ", headerMap=" + headMap + '\'' +
+                ", data=" + data +
                 '}';
     }
 
-    public static Headers parseHeader(String temp){
+    public static @NotNull Headers parseHeader( String temp){
         assert temp != null;
 
         assert temp.contains(Utils.CRLF);
@@ -65,8 +81,20 @@ public class Headers {
             String V = "";
             if(idx + 1 < part.length())
                 V = part.substring(idx + 1);
-            headers.put(K, V);
+            headers.putHeadMap(K, V);
         }
+
+        if(headers.getHeadMap("Content-Length") != null){
+            String[] dataStr = parts[ parts.length - 1].split("&");
+            for(String data_i : dataStr){
+                int idx = data_i.indexOf("=");
+                String K = data_i.substring(0, idx);
+                String V = data_i.substring(idx + 1);
+                headers.putData(K, V);
+            }
+
+        }
+
         return headers;
     }
 
@@ -140,7 +168,6 @@ class ResponseHeaders extends Headers{
         ret.append(String.format("Server: %s\r\n", getServer()));
         ret.append(String.format("Content-Type: %s\r\n", getContent_type()));
         ret.append(String.format("Content-Length: %d\r\n", getContent_length()));
-        ret.append("Transfer-Encoding: UTF-8\r\n");
         ret.append("Date:").append(new Date()).append("\r\n\r\n");
         return ret.toString();
     }

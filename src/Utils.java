@@ -4,22 +4,6 @@ import org.commonmark.node.Node;
 import org.commonmark.parser.Parser;
 import org.commonmark.renderer.html.HtmlRenderer;
 
-/**
- * 工具类
- * <p>
- *
- * 实现的工具如下：<br/>
- * 1. {@link #beanToJSONString}<br/>
- * 2. 保存各种常量值<br/>
- *
- *
- * @see #beanToJSONString(Object)
- *
- * @author 郑勤
- * @version 1.0.0
- * @since jdk11.0.6
- *
- */
 
 public class Utils {
 
@@ -33,24 +17,11 @@ public class Utils {
 
     final static String CRLF = "\r\n";
 
-    /**
-     * 将一个Object类对象转化为Json式的字符串
-     *
-     * @param obj 待转换的对象
-     * @return JSON型字符串
-     */
-
     public static String beanToJSONString(Object obj){
         Gson gson = new Gson();
         return gson.toJson(obj);
     }
 
-    /**
-     * 将Markdown转换为Html文档
-     *
-     * @param md 待转换的Markdown文档
-     * @return HTML文档
-     */
 
     public static String mdToHtml(String md){
         Parser parser = Parser.builder().build();
@@ -67,6 +38,11 @@ public class Utils {
         String type = url.split("\\.")[1].toLowerCase();
         return FileType.valueOf(type).getType();
     }
+
+    public enum MethodName{
+        GET, POST, HEAD;
+    }
+
 
 }
 
