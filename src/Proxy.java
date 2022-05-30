@@ -3,8 +3,6 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.Random;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -19,24 +17,12 @@ public class Proxy {
 
         ExecutorService HandlerPool = Executors.newFixedThreadPool(100);
 
-        HashSet<Integer> portSet = new HashSet<>();
-
-        Random random = new Random();
-
         while (true){
 
             try {
                 Socket socket = serverSocket.accept();
 
-                int port = 8081;
-                while (portSet.contains(port)){
-                    port = random.nextInt(16302) - 8081;
-                }
-                portSet.add(port);
-
-                HandlerPool.execute(new Handler(socket, port));
-
-                portSet.remove(port);
+                HandlerPool.execute(new Handler(socket));
 
             }
             catch (IOException e){
@@ -52,8 +38,6 @@ class Handler implements Runnable{
 
     private final Socket clientSocket;
 
-    private final int transPort;
-
     private final Pattern HOST = Pattern.compile("Host.*");
 
     private final Pattern CONTENT_LENGTH = Pattern.compile("Content-Length.*");
@@ -62,9 +46,8 @@ class Handler implements Runnable{
 
     private int content_length;
 
-    Handler(Socket socket, int transPort){
+    Handler(Socket socket){
         this.clientSocket = socket;
-        this.transPort = transPort;
     }
 
     @Override
@@ -89,10 +72,8 @@ class Handler implements Runnable{
             }
 
             System.out.println(contents.get(0));
-/*            if(Host.equals("localhost"))
-                Host = "127.0.0.1";*/
 
-            Socket toServer = new Socket(Host, transPort);
+            Socket toServer = new Socket(Host, 8081);
             OutputStream osServer = toServer.getOutputStream();
 
             for(String s: contents)
