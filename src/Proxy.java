@@ -28,9 +28,9 @@ public class Proxy {
             try {
                 Socket socket = serverSocket.accept();
 
-                int port = 8101;
+                int port = 8081;
                 while (portSet.contains(port)){
-                    port = random.nextInt(16302) - 8101;
+                    port = random.nextInt(16302) - 8081;
                 }
                 portSet.add(port);
 
@@ -92,7 +92,7 @@ class Handler implements Runnable{
 /*            if(Host.equals("localhost"))
                 Host = "127.0.0.1";*/
 
-            Socket toServer = new Socket(Host, 8081);
+            Socket toServer = new Socket(Host, transPort);
             OutputStream osServer = toServer.getOutputStream();
 
             for(String s: contents)

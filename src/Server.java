@@ -69,16 +69,6 @@ public class Server {
                             postMethod(socket,bufferedReader);
                             break;
 
-                        case "PUT":
-                            break;
-                        case "DELETE":
-                            break;
-                        case "CONNECT":
-                            break;
-                        case "OPTIONS":
-                            break;
-                        case "TRACE":
-                            break;
                         default:
                             break;
                     }
@@ -97,14 +87,16 @@ public class Server {
         outputStream.write(("HTTP/1.1 "+status+" "+status_code+"\r\n").getBytes(StandardCharsets.UTF_8));
         outputStream.write("Server: Java/jdk11.0\r\n".getBytes(StandardCharsets.UTF_8));
         outputStream.write(("Content-Type: "+type+"\r\n").getBytes(StandardCharsets.UTF_8));
-        /*outputStream.write("Transfer-Encoding: UTF-8\r\n".getBytes(StandardCharsets.UTF_8));*/
         outputStream.write(("Date:"+ new Date()+"\r\n").getBytes(StandardCharsets.UTF_8));
 
     }
 
     private static void getMethod( Socket socket,@NotNull String url) throws IOException {
 
-        url = url.split("/")[3];
+
+        Pattern urlPattern = Pattern.compile("(^[a-zA-Z0-9]*)\\.([a-zA-Z]*)");
+        if(!urlPattern.matcher(url).matches())
+            url = url.split("/")[3];
 
         if(url.equals(INDEX_PAGE)) {
             OutputStream outputStream = socket.getOutputStream();
@@ -133,7 +125,6 @@ public class Server {
 
             response(outputStream, 404, CONTENT_TYPE_HTML, STATUS_CODE_404);
 
-            /* outputStream.write(NOT_FOUND, 0, NOT_FOUND.length);*/
             socket.close();
         }
     }
