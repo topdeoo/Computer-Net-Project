@@ -23,7 +23,7 @@ public class Headers {
 
     public String getUrl(){return url;}
 
-    public void setUrl(String url){this.url = "webpage/" + url;}
+    public void setUrl(String url){this.url = "web/request/" + url;}
 
     public String getVersion(){return version;}
 
@@ -104,7 +104,7 @@ class ResponseHeaders extends Headers{
 
     private int code;
 
-    private String code_meaning;
+    private final String code_meaning;
 
     private String content_type;
 
@@ -124,15 +124,6 @@ class ResponseHeaders extends Headers{
 
     public int getCode() {
         return code;
-    }
-
-
-    public String getCode_meaning() {
-        return code_meaning;
-    }
-
-    public void setCode_meaning( String code_meaning ) {
-        this.code_meaning = code_meaning;
     }
 
 

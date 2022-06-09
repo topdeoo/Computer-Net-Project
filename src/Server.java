@@ -1,7 +1,6 @@
 import java.io.*;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
-import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -13,8 +12,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Server {
 
     private static final int PORT = 8081;
-
-    public static Hashtable<String, String> sqlData = new Hashtable<>();
 
     public static AtomicInteger flag = new AtomicInteger(1);
 

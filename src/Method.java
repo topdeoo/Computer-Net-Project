@@ -101,13 +101,17 @@ public class Method {
 
         String method = this.headers.getMethod();
         if(method.equals(Utils.MethodName.GET.toString())){
-            ByteBuffer context = nioFileHandler.read(url);
-            headers.setContent_length(context.capacity());
+
+            if(url.equals(Utils.EXIT))
+                Server.flag.set(0);
+
+            ByteBuffer responseBody = nioFileHandler.read(url);
+            headers.setContent_length(responseBody.capacity());
             headers.setContent_type(Utils.queryFileType(url));
             headers.setVersion(this.headers.getVersion());
             ByteBuffer responseHead = ByteBuffer.wrap(headers.toString().getBytes(StandardCharsets.UTF_8));
 
-            channel.write(new ByteBuffer[]{responseHead, context});
+            channel.write(new ByteBuffer[]{responseHead, responseBody});
         }
         else if(method.equals(Utils.MethodName.HEAD.toString())){
             headers.setVersion(this.headers.getVersion());
@@ -116,20 +120,25 @@ public class Method {
         }
         else if(method.equals(Utils.MethodName.POST.toString())){
             String data = this.headers.getData();
-            nioFileHandler.write("webpage/data.txt", data);
+            nioFileHandler.write("db/data.txt", data);
             headers.setVersion(this.headers.getVersion());
             ByteBuffer responseHead = ByteBuffer.wrap(headers.toString().getBytes(StandardCharsets.UTF_8));
             channel.write(responseHead);
         }
 
-
     }
 
     private void handleError( @NotNull SocketChannel channel ,int code ) throws IOException {
         ResponseHeaders headers = new ResponseHeaders(code);
+
+        String filename = "web/error/" + code + ".html";
+        ByteBuffer responseBody = nioFileHandler.read(filename);
+        headers.setContent_length(responseBody.capacity());
+        headers.setContent_type(Utils.queryFileType(filename));
+        headers.setVersion(this.headers.getVersion());
         ByteBuffer responseHead = ByteBuffer.wrap(headers.toString().getBytes(StandardCharsets.UTF_8));
 
-        channel.write(responseHead);
+        channel.write(new ByteBuffer[]{responseHead, responseBody});
     }
 
 }
