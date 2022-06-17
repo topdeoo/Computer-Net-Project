@@ -18,10 +18,6 @@ public class RequestHeader {
 
     private String Host;
 
-    private String ClientIP;
-
-    private int Port;
-
     protected Hashtable<String, String> headMap = new Hashtable<>();
 
     protected StringBuilder data = new StringBuilder();
@@ -45,7 +41,7 @@ public class RequestHeader {
 
     public String getUrl(){return url;}
 
-    public void setUrl(String url){this.url = "web/request/" + url;}
+    public void setUrl(String url){this.url = url;}
 
     public String getVersion(){return version;}
 
@@ -79,22 +75,6 @@ public class RequestHeader {
         return content_length;
     }
 
-    public String getClientIP(){
-        return ClientIP;
-    }
-
-    public void setClientIP(String IP){
-        this.ClientIP = IP;
-    }
-
-    public int getPort(){
-        return Port;
-    }
-
-    public void setPort(int port){
-        this.Port = port;
-    }
-
     public String getHost(){
         return Host;
     }
@@ -108,8 +88,10 @@ public class RequestHeader {
         StringBuilder sb = new StringBuilder();
 
         sb.append(String.format("%s %s %s\r\n", getMethod(), getUrl(), getVersion()));
-        sb.append(String.format("Host: %s\r\n", getHost()));
-        sb.append(headMap.toString());
+        for(String K : headMap.keySet())
+            sb.append(String.format("%s:%s\r\n", K, headMap.get(K)));
+        sb.append("\r\n");
+        sb.append(data.toString());
 
         return sb.toString();
     }
@@ -122,14 +104,9 @@ class ResponseHeader extends RequestHeader {
 
     private String code_meaning;
 
-    private String server = "jdk17.0";
+    private String server = "java/jdk17.0";
 
     ResponseHeader(){}
-
-    ResponseHeader(int code){
-        this.code = code;
-        this.code_meaning = Utils.queryCode(code);
-    }
 
     ResponseHeader(RequestHeader header){
         super(header);
@@ -152,5 +129,14 @@ class ResponseHeader extends RequestHeader {
         return server;
     }
 
+
+    public void setCode( int code ) {
+        this.code = code;
+        this.code_meaning = Utils.queryCode(code);
+    }
+
+}
+
+class ProxyRequestHead extends RequestHeader{
 
 }

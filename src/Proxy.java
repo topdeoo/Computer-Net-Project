@@ -1,9 +1,14 @@
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.regex.Pattern;
 
 public class Proxy {
 
@@ -20,7 +25,7 @@ public class Proxy {
             try {
                 Socket socket = serverSocket.accept();
 
-                HandlerPool.execute(new Handler(socket));
+                HandlerPool.execute(new ProxyHandler(socket));
 
             }
             catch (IOException e){
@@ -32,12 +37,33 @@ public class Proxy {
 
 }
 
-class Handler implements Runnable{
+class ProxyHandler implements Runnable{
 
-    private final Socket clientSocket;
+    private final Socket client;
 
-    Handler(Socket socket){
-        this.clientSocket = socket;
+    private int port = 80;
+
+    ProxyHandler( Socket socket){
+        this.client = socket;
+    }
+
+    private @NotNull String getMsg( @NotNull BufferedReader reader) throws IOException {
+        StringBuilder ret = new StringBuilder();
+        char[] chars = new char[Utils.SIZE];
+        do{
+            reader.read(chars);
+            ret.append(chars);
+            Arrays.fill(chars, '\0');
+        } while (reader.ready());
+        return ret.toString();
+    }
+
+    @Contract(pure = true)
+    private byte @NotNull [] getData( @NotNull String data,int length){
+        byte[] ret = new byte[length];
+        byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+        System.arraycopy(bytes ,0 ,ret ,0 ,length);
+        return ret;
     }
 
     @Override
@@ -45,20 +71,29 @@ class Handler implements Runnable{
 
         try {
 
-            String temp = new String(clientSocket.getInputStream().readAllBytes());
+            String temp = getMsg(new BufferedReader(new InputStreamReader(client.getInputStream())));
             RequestHeader requestHeader = Utils.requestParseString(temp);
-            requestHeader.setPort(clientSocket.getPort());
-
-            Socket server = new Socket(requestHeader.getHost(), requestHeader.getPort());
+            String host = requestHeader.getHost();
+            int idx = host.indexOf(":");
+            if(idx != -1) {
+                port = Integer.parseInt(host.substring(idx + 1));
+                host = host.substring(0, idx);
+            }
+            Socket server = new Socket(host, port);
+            String[] parts = requestHeader.getUrl().split("/");
+            requestHeader.setUrl("/" + parts[parts.length - 1]);
             server.getOutputStream().write(requestHeader.toString().getBytes(StandardCharsets.UTF_8));
 
-            temp = new String(server.getInputStream().readAllBytes());
+            temp = getMsg(new BufferedReader(new InputStreamReader(server.getInputStream())));
             ResponseHeader responseHeader = Utils.responseParseString(temp);
+            OutputStream os = client.getOutputStream();
+            os.write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
 
-            clientSocket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
+            byte[] data = getData(responseHeader.getData(), responseHeader.getContent_length());
+            os.write(data);
 
             server.close();
-            clientSocket.close();
+            client.close();
 
         }
         catch (Exception e) {
