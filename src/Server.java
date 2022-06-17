@@ -1,74 +1,40 @@
 import org.jetbrains.annotations.NotNull;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Arrays;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class Server {
 
-
     private static final int PORT = 8081;
-
-    private static final String INDEX_PAGE = "index.html";
-
-    private static final String EXIT = "shutdown";
-
-    private static final String CONTENT_TYPE_FORM = "application/x-www-form-urlencoded";
-
-    private static final String CONTENT_TYPE_FILE = "multipart/form-data";
-
-    private static final String CONTENT_TYPE_JSON = "application/json";
-
-    private static final String CONTENT_TYPE_HTML = "text/html";
-
-    private static final String CONTENT_TYPE_TEXT = "text/plain";
-
-    private static final String STATUS_CODE_500 = "Internal Server Error";
-
-    private static final String STATUS_CODE_200 = "OK";
-
-    private static final String STATUS_CODE_404 = "Not Found";
-
-    private static final String STATUS_CODE_501 = "Not Implemented";
-
-    static AtomicInteger flag = new AtomicInteger(1);
 
 
     public static void main( String[] args ) throws IOException {
+        ExecutorService ThreadPool = Executors.newFixedThreadPool(200);
         ServerSocket serverSocket = new ServerSocket(PORT);
-        while (flag.get() == 1){
+        while (true){
             Socket socket = serverSocket.accept();
             System.out.println("Success");
-            new Thread(()->{
-                try{
-
-                    InputStream is = socket.getInputStream();
-                    String temp = new String(is.readAllBytes());
-
-                    RequestHeader requestHeader = Utils.requestParseString(temp);
-
-                    try {
-                        handle200(socket, requestHeader);
-                    }
-                    catch (FileNotFoundException e){
-                        handle404(socket);
-                    }
-                    catch (Exception e){
-                        handle500(socket);
-                    }
-                    finally {
-                        socket.close();
-                    }
-                }
-                catch (IOException e){
-                    e.printStackTrace();
-                }
-            }).start();
+            ThreadPool.execute(new Handler(socket));
         }
+    }
+
+}
+
+class Handler implements Runnable{
+
+    private final Socket socket;
+
+    private static RequestHeader requestHeader;
+
+    private static ResponseHeader responseHeader;
+
+    Handler(Socket socket){
+        this.socket = socket;
     }
 
     private static void handle501( Socket socket ){
@@ -80,7 +46,7 @@ public class Server {
         }
     }
 
-    private static void handle500( Socket socket ) {
+    static void handle500( Socket socket ) {
         try{
             handleError(socket, 500);
         }
@@ -89,7 +55,7 @@ public class Server {
         }
     }
 
-    private static void handle404(Socket socket) {
+    static void handle404( Socket socket ) {
         try{
             handleError(socket, 404);
         }
@@ -101,38 +67,38 @@ public class Server {
     private static void handleError( @NotNull Socket socket ,int code ) throws IOException {
 
         String filename = "web/error/" + code + ".html";
-        ResponseHeader responseHeader = new ResponseHeader(code);
         byte[] responseBody = Utils.NIOReadFile(filename);
-
+        Utils.writeResponse(responseHeader, code, responseBody.length, filename);
         socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
         socket.getOutputStream().write(responseBody);
 
     }
 
-    private static void handle200( Socket socket ,@NotNull RequestHeader requestHeader ) throws IOException {
+    private static void handle200( Socket socket ) throws IOException {
 
         String method = requestHeader.getMethod();
-        ResponseHeader responseHeader;
 
         switch (method){
             case "GET":
                 String url = requestHeader.getUrl();
 
                 if(url.equals(Utils.EXIT))
-                    Server.flag.set(0);
+                    System.exit(-1);
 
                 byte[] responseBody = Utils.NIOReadFile(url);
 
-                responseHeader = new ResponseHeader(requestHeader);
+                Utils.writeResponse(responseHeader, 200, responseBody.length, url);
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().write(responseBody);
                 break;
             case "HEAD":
-                responseHeader = new ResponseHeader(requestHeader);
+                Utils.writeResponse(responseHeader, 200);
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 break;
             case "POST":
-                responseHeader = new ResponseHeader(requestHeader);
+                Utils.writeResponse(responseHeader, 200);
+                responseHeader.setContent_type("");
+                responseHeader.setContent_length(0);
                 String data = requestHeader.getData();
                 Utils.NIOWriteFile("db/data.txt", data);
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
@@ -143,6 +109,43 @@ public class Server {
 
     }
 
+    private @NotNull String getMsg( @NotNull BufferedReader reader) throws IOException {
+        StringBuilder ret = new StringBuilder();
+        char[] chars = new char[Utils.SIZE];
+        do{
+            reader.read(chars);
+            ret.append(chars);
+            Arrays.fill(chars, '\0');
+        } while (reader.ready());
+        return ret.toString();
+    }
 
+    @Override
+    public void run() {
+        try{
 
+            InputStream is = socket.getInputStream();
+            BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+            String temp = getMsg(reader);
+
+            requestHeader = Utils.requestParseString(temp);
+            responseHeader = new ResponseHeader(requestHeader);
+
+            try {
+                Handler.handle200(socket);
+            }
+            catch (FileNotFoundException e){
+                Handler.handle404(socket);
+            }
+            catch (Exception e){
+                Handler.handle500(socket);
+            }
+            finally {
+                socket.close();
+            }
+        }
+        catch (IOException e){
+            e.printStackTrace();
+        }
+    }
 }

@@ -18,10 +18,6 @@ public class RequestHeader {
 
     private String Host;
 
-    private String ClientIP;
-
-    private int Port;
-
     protected Hashtable<String, String> headMap = new Hashtable<>();
 
     protected StringBuilder data = new StringBuilder();
@@ -79,22 +75,6 @@ public class RequestHeader {
         return content_length;
     }
 
-    public String getClientIP(){
-        return ClientIP;
-    }
-
-    public void setClientIP(String IP){
-        this.ClientIP = IP;
-    }
-
-    public int getPort(){
-        return Port;
-    }
-
-    public void setPort(int port){
-        this.Port = port;
-    }
-
     public String getHost(){
         return Host;
     }
@@ -122,14 +102,9 @@ class ResponseHeader extends RequestHeader {
 
     private String code_meaning;
 
-    private String server = "jdk17.0";
+    private String server = "java/jdk17.0";
 
     ResponseHeader(){}
-
-    ResponseHeader(int code){
-        this.code = code;
-        this.code_meaning = Utils.queryCode(code);
-    }
 
     ResponseHeader(RequestHeader header){
         super(header);
@@ -152,5 +127,10 @@ class ResponseHeader extends RequestHeader {
         return server;
     }
 
+
+    public void setCode( int code ) {
+        this.code = code;
+        this.code_meaning = Utils.queryCode(code);
+    }
 
 }

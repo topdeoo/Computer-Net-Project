@@ -14,7 +14,8 @@ public class Utils {
 
     public static final String CRLF = "\r\n";
 
-    public static final String EXIT = "shutdown";
+    public static final String EXIT = "web/request//shutdown";
+    public static final int SIZE = 1024;
 
     private static final Pattern HOST = Pattern.compile("Host.*");
 
@@ -77,10 +78,14 @@ public class Utils {
         return requestHeader;
     }
 
-    public static @NotNull ResponseHeader responseParseString( @NotNull String temp){
-        ResponseHeader responseHeader = new ResponseHeader();
+    public static void writeResponse( @NotNull ResponseHeader header,int code,int length,String url){
+        header.setCode(code);
+        header.setContent_length(length);
+        header.setContent_type(Utils.queryFileType(url));
+    }
 
-        return responseHeader;
+    public static void writeResponse( @NotNull ResponseHeader header,int code){
+        header.setCode(code);
     }
 
     public static byte @NotNull [] NIOReadFile( String url ) throws IOException {
@@ -107,6 +112,11 @@ public class Utils {
         return CodeStatus.valueOf("STATUS_CODE_"+code).getStatus();
     }
 
+    public static String queryFileType( @NotNull String url){
+        String type = url.split("\\.")[1].toLowerCase();
+        return FileType.valueOf(type).getType();
+    }
+
 }
 
 enum CodeStatus{
@@ -125,4 +135,20 @@ enum CodeStatus{
     public String getStatus(){
         return status;
     }
+}
+
+enum FileType{
+
+    html("text/html"), txt("text/plain"), json("application/json"), md("text/markdown");
+
+    private String type;
+
+    private FileType(String type){
+        this.type = type;
+    }
+
+    public String getType(){
+        return type;
+    }
+
 }
