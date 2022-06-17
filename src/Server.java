@@ -1,14 +1,12 @@
-import com.google.gson.JsonObject;
-import com.google.gson.JsonParser;
 import org.jetbrains.annotations.NotNull;
-import java.io.*;
+
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
 
 public class Server {
 
@@ -47,177 +45,104 @@ public class Server {
             System.out.println("Success");
             new Thread(()->{
                 try{
-                    InputStream inputStream = socket.getInputStream();
-                    BufferedReader bufferedReader = new BufferedReader(
-                            new InputStreamReader(inputStream)
-                    );
-                    String[] head = bufferedReader.readLine().split(" ");
 
-                    switch (head[0]){
-                        case "GET":
+                    InputStream is = socket.getInputStream();
+                    String temp = new String(is.readAllBytes());
 
-                            getMethod(socket, head[1].substring(1));
-                            break;
+                    RequestHeader requestHeader = Utils.requestParseString(temp);
 
-                        case "HEAD":
-
-                            headMethod(socket, head[1].substring(1));
-                            break;
-
-                        case "POST":
-
-                            postMethod(socket,bufferedReader);
-                            break;
-
-                        default:
-                            break;
+                    try {
+                        handle200(socket, requestHeader);
                     }
-
+                    catch (FileNotFoundException e){
+                        handle404(socket);
+                    }
+                    catch (Exception e){
+                        handle500(socket);
+                    }
+                    finally {
+                        socket.close();
+                    }
                 }
-                catch (Exception e){
+                catch (IOException e){
                     e.printStackTrace();
                 }
             }).start();
         }
     }
 
-    private static void response( @NotNull OutputStream outputStream, int status, String type, String status_code)
-            throws IOException {
-
-        outputStream.write(("HTTP/1.1 "+status+" "+status_code+"\r\n").getBytes(StandardCharsets.UTF_8));
-        outputStream.write("Server: Java/jdk11.0\r\n".getBytes(StandardCharsets.UTF_8));
-        outputStream.write(("Content-Type: "+type+"\r\n").getBytes(StandardCharsets.UTF_8));
-        outputStream.write(("Date:"+ new Date()+"\r\n").getBytes(StandardCharsets.UTF_8));
-
-    }
-
-    private static void getMethod( Socket socket,@NotNull String url) throws IOException {
-
-
-        Pattern urlPattern = Pattern.compile("(^[a-zA-Z0-9]*)\\.([a-zA-Z]*)");
-        if(!urlPattern.matcher(url).matches())
-            url = url.split("/")[3];
-
-        if(url.equals(INDEX_PAGE)) {
-            OutputStream outputStream = socket.getOutputStream();
-
-            response(outputStream, 200, CONTENT_TYPE_HTML, STATUS_CODE_200);
-
-            FileInputStream fileInputStream = new FileInputStream("webpage/" + url);
-
-            outputStream.write(("Content-Length: " + fileInputStream.available() + "\r\n\r\n").
-                    getBytes(StandardCharsets.UTF_8));
-
-            byte[] data = new byte[1024];
-            int eof = 0;
-            while ((eof = fileInputStream.read(data)) != -1)
-                outputStream.write(data, 0, eof);
-
-            socket.close();
-            fileInputStream.close();
+    private static void handle501( Socket socket ){
+        try{
+            handleError(socket, 501);
         }
-        else if(url.equals(EXIT)){
-            flag.set(0);
-            socket.close();
-        }
-        else {
-            OutputStream outputStream = socket.getOutputStream();
-
-            response(outputStream, 404, CONTENT_TYPE_HTML, STATUS_CODE_404);
-
-            socket.close();
+        catch (Exception e){
+            e.printStackTrace();
         }
     }
 
-    private static void headMethod( @NotNull Socket socket,@NotNull String url) throws IOException {
+    private static void handle500( Socket socket ) {
+        try{
+            handleError(socket, 500);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 
-        OutputStream outputStream = socket.getOutputStream();
-        if(url.equals(INDEX_PAGE))
-            response(outputStream, 200, CONTENT_TYPE_HTML, STATUS_CODE_200);
-        else
-            response(outputStream, 404, CONTENT_TYPE_TEXT, STATUS_CODE_404);
+    private static void handle404(Socket socket) {
+        try{
+            handleError(socket, 404);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+    private static void handleError( @NotNull Socket socket ,int code ) throws IOException {
+
+        String filename = "web/error/" + code + ".html";
+        ResponseHeader responseHeader = new ResponseHeader(code);
+        byte[] responseBody = Utils.NIOReadFile(filename);
+
+        socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
+        socket.getOutputStream().write(responseBody);
 
     }
 
-    private static void postMethod( Socket socket ,@NotNull BufferedReader bufferedReader )
-            throws IOException {
+    private static void handle200( Socket socket ,@NotNull RequestHeader requestHeader ) throws IOException {
 
-        int isSuccess = 1;
-        String type_charset = null;
-        int length = 0;
-        String temp;
+        String method = requestHeader.getMethod();
+        ResponseHeader responseHeader;
 
-        Pattern patternType = Pattern.compile("Content-Type.*");
-        Pattern patternLength = Pattern.compile("Content-Length.*");
-        while (!(temp = bufferedReader.readLine()).equals("")) {
-            if(patternType.matcher(temp).matches()){
-                type_charset = temp.split(":")[1].substring(1);
-            }
-            else if(patternLength.matcher(temp).matches()){
-                length = Integer.parseInt(temp.split(":")[1].substring(1));
-            }
-        }
+        switch (method){
+            case "GET":
+                String url = requestHeader.getUrl();
 
-        assert type_charset != null;
+                if(url.equals(Utils.EXIT))
+                    Server.flag.set(0);
 
+                byte[] responseBody = Utils.NIOReadFile(url);
 
-        char[] buff = new char[length];
-
-        if(bufferedReader.read(buff, 0, length) < 0)
-            isSuccess = 0;
-
-        if(isSuccess == 0){
-            response(socket.getOutputStream(), 500, CONTENT_TYPE_FORM, STATUS_CODE_500);
-            return;
-        }
-
-        String total_data = new String(buff);
-
-        String[] t = type_charset.split(";");
-        String type = t[0];         //ignore charset
-        switch (type){
-            case CONTENT_TYPE_FORM:
-
-                String[] data = total_data.split("&");
-                HashMap<String, String> hashMap = new HashMap<>();
-                for (String data_i : data) {
-                    String[] key_value = data_i.split("=");
-                    hashMap.put(key_value[0] ,key_value[1]);
-                }
-                // 输出成功代表POST成功
-                for(String key: hashMap.keySet())
-                    System.out.println(key+"=>"+hashMap.get(key));
-
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_FORM, STATUS_CODE_200);
-
+                responseHeader = new ResponseHeader(requestHeader);
+                socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write(responseBody);
                 break;
-            case CONTENT_TYPE_FILE:
-                // 可以提交文件，但是这个你也没法查看文件啊。。。
-                System.out.println("POST SUCCESS");
-
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_FILE, STATUS_CODE_200);
-
+            case "HEAD":
+                responseHeader = new ResponseHeader(requestHeader);
+                socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 break;
-            case CONTENT_TYPE_JSON:
-
-                JsonObject jsonObject = JsonParser.parseString(total_data).getAsJsonObject();
-                System.out.println(jsonObject);
-
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_JSON, STATUS_CODE_200);
-
-                break;
-            case CONTENT_TYPE_TEXT:
-
-                System.out.println(total_data);
-                response(socket.getOutputStream(), 200, CONTENT_TYPE_TEXT, STATUS_CODE_200);
-
+            case "POST":
+                responseHeader = new ResponseHeader(requestHeader);
+                String data = requestHeader.getData();
+                Utils.NIOWriteFile("db/data.txt", data);
+                socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 break;
             default:
-                response(socket.getOutputStream(), 501, CONTENT_TYPE_TEXT, STATUS_CODE_501);
-                break;
+                handle501(socket);
         }
 
-        socket.close();
     }
+
+
 
 }
