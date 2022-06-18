@@ -1,3 +1,4 @@
+import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.*;
@@ -104,12 +105,12 @@ class Handler implements Runnable{
                 Utils.NIOWriteFile("db/data.txt", data, requestHeader.getContent_length()); //将data写入数据库db（伪）
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 break;
-            case "PUT":
+                case "PUT":
                 Utils.writeResponse(responseHeader, 200);
                 responseHeader.setContent_type(Utils.queryFileType(".html"));
                 responseBody = Utils.mdToHtml(responseHeader.getData()).getBytes(StandardCharsets.UTF_8);
                 //实现将md文件转换成html（读取请求报文体内容，转换成html并转换成字节数组）
-                requestHeader.setContent_length(responseBody.length); //获取字节数组长度
+                responseHeader.setContent_length(responseBody.length); //获取字节数组长度
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().write(responseBody);
                 break;
@@ -129,6 +130,8 @@ class Handler implements Runnable{
         } while (br.ready());
         return ret.toString();
     }
+
+
 
     @Override
     public void run() {
