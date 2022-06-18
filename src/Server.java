@@ -107,7 +107,7 @@ class Handler implements Runnable{
                 Utils.writeResponse(responseHeader, 200);
                 responseHeader.setContent_type(Utils.queryFileType(".html"));
                 responseBody = Utils.mdToHtml(responseHeader.getData()).getBytes(StandardCharsets.UTF_8);
-                requestHeader.setContent_length(responseBody.length);
+                responseHeader.setContent_length(responseBody.length);
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 socket.getOutputStream().write(responseBody);
                 break;

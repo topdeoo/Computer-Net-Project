@@ -49,11 +49,10 @@ class ProxyHandler implements Runnable{
 
     private @NotNull String getMsg( @NotNull BufferedReader reader) throws IOException {
         StringBuilder ret = new StringBuilder();
-        char[] chars = new char[Utils.SIZE];
         do{
+            char[] chars = new char[Utils.SIZE];
             reader.read(chars);
             ret.append(chars);
-            Arrays.fill(chars, '\0');
         } while (reader.ready());
         return ret.toString(); //读报文数据，同Server
     }
@@ -78,10 +77,10 @@ class ProxyHandler implements Runnable{
             if(idx != -1) {
                 port = Integer.parseInt(host.substring(idx + 1)); //截取(localhost:8081)目的端口号，若无则为80
                 host = host.substring(0, idx);
+                String[] parts = requestHeader.getUrl().split("/"); // http://localhost:8081/index.html
+                requestHeader.setUrl(parts[parts.length - 1]); //截出所需url部分（即index.html）
             }
             Socket server = new Socket(host, port);
-            String[] parts = requestHeader.getUrl().split("/"); // http://localhost:8081/index.html
-            requestHeader.setUrl("/" + parts[parts.length - 1]); //截出所需url部分（即index.html）
             server.getOutputStream().write(requestHeader.toString().getBytes(StandardCharsets.UTF_8));
 
             temp = getMsg(new BufferedReader(new InputStreamReader(server.getInputStream()))); //获取服务器响应报文
