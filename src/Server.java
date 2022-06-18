@@ -103,6 +103,14 @@ class Handler implements Runnable{
                 Utils.NIOWriteFile("db/data.txt", data, requestHeader.getContent_length());
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 break;
+            case "PUT":
+                Utils.writeResponse(responseHeader, 200);
+                responseHeader.setContent_type(Utils.queryFileType(".html"));
+                responseBody = Utils.mdToHtml(responseHeader.getData()).getBytes(StandardCharsets.UTF_8);
+                responseHeader.setContent_length(responseBody.length);
+                socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
+                socket.getOutputStream().write(responseBody);
+                break;
             default:
                 handle501(socket);
         }

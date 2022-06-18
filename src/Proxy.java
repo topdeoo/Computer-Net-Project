@@ -10,7 +10,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
 
-public class Proxy {
+public class Proxy { //类服务器
 
     private static final int PORT = 8080;
 
@@ -41,7 +41,7 @@ class ProxyHandler implements Runnable{
 
     private final Socket client;
 
-    private int port = 80;
+    private int port = 80; //http端口
 
     ProxyHandler( Socket socket){
         this.client = socket;
@@ -49,17 +49,16 @@ class ProxyHandler implements Runnable{
 
     private @NotNull String getMsg( @NotNull BufferedReader reader) throws IOException {
         StringBuilder ret = new StringBuilder();
-        char[] chars = new char[Utils.SIZE];
         do{
+            char[] chars = new char[Utils.SIZE];
             reader.read(chars);
             ret.append(chars);
-            Arrays.fill(chars, '\0');
         } while (reader.ready());
-        return ret.toString();
+        return ret.toString(); //读报文数据，同Server
     }
 
     @Contract(pure = true)
-    private byte @NotNull [] getData( @NotNull String data,int length){
+    private byte @NotNull [] getData( @NotNull String data,int length){ //去除报文内容中的null
         byte[] ret = new byte[length];
         byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
         System.arraycopy(bytes ,0 ,ret ,0 ,length);
@@ -71,26 +70,26 @@ class ProxyHandler implements Runnable{
 
         try {
 
-            String temp = getMsg(new BufferedReader(new InputStreamReader(client.getInputStream())));
-            RequestHeader requestHeader = Utils.requestParseString(temp);
-            String host = requestHeader.getHost();
+            String temp = getMsg(new BufferedReader(new InputStreamReader(client.getInputStream()))); //读取客户端请求报文
+            RequestHeader requestHeader = Utils.requestParseString(temp); //解析报文
+            String host = requestHeader.getHost(); //获取目的服务器
             int idx = host.indexOf(":");
             if(idx != -1) {
-                port = Integer.parseInt(host.substring(idx + 1));
+                port = Integer.parseInt(host.substring(idx + 1)); //截取(localhost:8081)目的端口号，若无则为80
                 host = host.substring(0, idx);
+                String[] parts = requestHeader.getUrl().split("/"); // http://localhost:8081/index.html
+                requestHeader.setUrl(parts[parts.length - 1]); //截出所需url部分（即index.html）
             }
             Socket server = new Socket(host, port);
-            String[] parts = requestHeader.getUrl().split("/");
-            requestHeader.setUrl("/" + parts[parts.length - 1]);
             server.getOutputStream().write(requestHeader.toString().getBytes(StandardCharsets.UTF_8));
 
-            temp = getMsg(new BufferedReader(new InputStreamReader(server.getInputStream())));
+            temp = getMsg(new BufferedReader(new InputStreamReader(server.getInputStream()))); //获取服务器响应报文
             ResponseHeader responseHeader = Utils.responseParseString(temp);
             OutputStream os = client.getOutputStream();
             os.write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
 
-            byte[] data = getData(responseHeader.getData(), responseHeader.getContent_length());
-            os.write(data);
+            byte[] responseBody = getData(responseHeader.getData(), responseHeader.getContent_length());
+            os.write(responseBody);
 
             server.close();
             client.close();

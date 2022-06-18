@@ -31,7 +31,7 @@ public class RequestHeader {
         this.content_length = header.content_length;
         this.content_type = header.content_type;
         this.headMap = new Hashtable<>(header.headMap);
-        this.data = new StringBuilder(data.toString());
+        this.data = new StringBuilder(header.data.toString());
     }
 
 
@@ -134,9 +134,5 @@ class ResponseHeader extends RequestHeader {
         this.code = code;
         this.code_meaning = Utils.queryCode(code);
     }
-
-}
-
-class ProxyRequestHead extends RequestHeader{
 
 }
