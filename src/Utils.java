@@ -1,7 +1,8 @@
-import com.google.gson.Gson;
+import org.commonmark.node.Node;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
 import org.jetbrains.annotations.NotNull;
 
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
@@ -23,9 +24,11 @@ public class Utils {
 
     private static final Pattern CONTENT_TYPE = Pattern.compile("Content-Type.*");
 
-    public static String beanToJSONString(Object bean){
-        Gson gson = new Gson();
-        return gson.toJson(bean);
+    public static String mdToHtml(String md){
+        Parser parser = Parser.builder().build();
+        Node document = parser.parse(md);
+        HtmlRenderer renderer = HtmlRenderer.builder().build();
+        return renderer.render(document);
     }
 
     public static @NotNull RequestHeader requestParseString( @NotNull String temp){
@@ -45,12 +48,14 @@ public class Utils {
 
         parts = temp.split(CRLF);
 
-        int split = -1;
+        int split = 0;
         for(int i = 0; i < parts.length; i++){
             if(parts[i].equals("")){
-                split = i;
+                split += 2;
                 break;
             }
+
+            split += (2 + parts[i].length());
             int idx = parts[i].indexOf(":");
             if(idx == -1)
                 continue;
@@ -62,18 +67,16 @@ public class Utils {
 
             else if(Utils.CONTENT_TYPE.matcher(parts[i]).matches())
                 requestHeader.setContent_type(parts[i].substring(idx + 2));
-            else {
-                String K = parts[i].substring(0 ,idx);
-                String V = "";
-                if (idx + 1 < parts[i].length())
-                    V = parts[i].substring(idx + 1);
-                requestHeader.putHeadMap(K ,V);
-            }
+
+            String K = parts[i].substring(0 ,idx);
+            String V = "";
+            if (idx + 1 < parts[i].length())
+                V = parts[i].substring(idx);
+            requestHeader.putHeadMap(K ,V);
+
         }
-        if(split > -1)
-            for(int i = split; i < parts.length; i++){
-                requestHeader.setData(parts[i]);
-            }
+
+        requestHeader.setData(temp.substring(split + 1));
 
         return requestHeader;
     }
@@ -99,11 +102,16 @@ public class Utils {
         return ret;
     }
 
-    public static void NIOWriteFile( String filename ,String data ) throws IOException {
+    public static void NIOWriteFile( String filename , @NotNull String data, int length ) throws IOException {
         RandomAccessFile access = new RandomAccessFile(filename, "rw");
 
         FileChannel channel = access.getChannel();
-        ByteBuffer byteBuffer = StandardCharsets.UTF_8.encode(data);
+
+        byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+        byte[] content = new byte[length];
+        System.arraycopy(bytes ,0 ,content ,0 ,length);
+
+        ByteBuffer byteBuffer = ByteBuffer.wrap(content);
 
         channel.write(byteBuffer);
     }

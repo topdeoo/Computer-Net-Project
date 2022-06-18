@@ -31,7 +31,7 @@ public class RequestHeader {
         this.content_length = header.content_length;
         this.content_type = header.content_type;
         this.headMap = new Hashtable<>(header.headMap);
-        this.data = new StringBuilder(data.toString());
+        this.data = new StringBuilder(header.getData());
     }
 
 
