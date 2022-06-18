@@ -1,13 +1,9 @@
-import java.io.*;
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.channels.*;
 import java.util.Iterator;
-import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-
 
 public class Server {
 
@@ -15,144 +11,106 @@ public class Server {
 
     public static AtomicInteger flag = new AtomicInteger(1);
 
-    private static ExecutorService ThreadPool = Executors.newFixedThreadPool(200);
-
-
-    public static void main( String[] args ) throws IOException {
+    public static void main(String[] args) {
 
         try(ServerSocketChannel server = ServerSocketChannel.open()) {
-
-            Thread.currentThread().setName("Master");
-
+            Thread.currentThread().setName("master");
             server.bind(new InetSocketAddress(PORT));
             server.configureBlocking(false);
 
             Selector master = Selector.open();
             server.register(master, SelectionKey.OP_ACCEPT);
 
-            while (true){
+            Handler[] handlers = new Handler[4];
+            for (int i = 0 ; i< handlers.length; i++)
+                handlers[i] = new Handler(String.valueOf(i));
+
+            AtomicInteger idx = new AtomicInteger();
+
+
+            while(true) {
 
                 master.select();
-                Set<SelectionKey> selectionKeySet = master.selectedKeys();
-                Iterator<SelectionKey> selectionKeyIt = selectionKeySet.iterator();
 
-                while (selectionKeyIt.hasNext()){
+                Iterator<SelectionKey> iter = master.selectedKeys().iterator();
+                while (iter.hasNext()) {
 
-                    SelectionKey key = selectionKeyIt.next();
-                    selectionKeyIt.remove();
+                    SelectionKey key = iter.next();
+                    iter.remove();
 
-                    if(key.isAcceptable()){
-
-                        try {
-
-                            ServerSocketChannel channel = (ServerSocketChannel) key.channel();
-                            SocketChannel client = server.accept();
-                            client.configureBlocking(false);
-
-                            ThreadPool.execute(new ServerHandler(client));
-
-                            if (flag.get() == 0)
-                                System.exit(0);
-                        }
-                        catch (Exception e){
-                            e.printStackTrace();
-                            key.cancel();
-                        }
+                    if(key.isAcceptable()) {
+                        SocketChannel channel = server.accept();
+                        channel.configureBlocking(false);
+                        handlers[idx.getAndIncrement() % handlers.length].register(channel);
                     }
                     else {
                         key.cancel();
                     }
                 }
-
             }
-
-        }
-        catch (IOException e){
+        }catch (Exception e){
             e.printStackTrace();
         }
-
     }
 }
 
-class ServerHandler implements Runnable{
+class Handler implements Runnable{
 
+    private Thread thread;
     private Selector selector;
-
-    private final Method method;
-
-    private final SocketChannel socketChannel;
-
     private ConcurrentLinkedQueue<Runnable> queue = new ConcurrentLinkedQueue<>();
 
-    private static final int SIZE = 4096;
-
-    ServerHandler(SocketChannel client) throws IOException {
-        this.socketChannel = client;
-        method  = new Method();
+    public Handler( String name) throws IOException {
+        thread = new Thread(this, name);
+        thread.start();
         selector = Selector.open();
     }
 
 
-    void register(SocketChannel sc) throws IOException{
+    public void register(SocketChannel sc) throws IOException {
         queue.add(()->{
-           try{
-               sc.register(this.selector, SelectionKey.OP_READ, null);
-           } catch (ClosedChannelException e) {
-               e.printStackTrace();
-           }
+            try {
+                sc.register(this.selector,SelectionKey.OP_READ,null);//boss
+            } catch (ClosedChannelException e) {
+                e.printStackTrace();
+            }
         });
+
         selector.wakeup();
     }
-
 
 
     @Override
     public void run() {
 
-        try{
-            register(socketChannel);
-        }
-        catch (Exception e){
-            e.printStackTrace();
-        }
-
-        while (true){
-
-            try{
+        while(true){
+            try {
 
                 selector.select();
                 Runnable task = queue.poll();
 
-                if(task != null)
+                if(task!=null)
                     task.run();
 
-                Iterator<SelectionKey> it = this.selector.selectedKeys().iterator();
-                while (it.hasNext()){
-
-                    SelectionKey key = it.next();
-                    it.remove();
-
-                    if(key.isReadable()){
-
+                Iterator<SelectionKey> iter = this.selector.selectedKeys().iterator();
+                while (iter.hasNext()) {
+                    SelectionKey key = iter.next();
+                    iter.remove();
+                    if (key.isReadable()) {
+                        Method method = new Method();
                         method.processRequest(key);
-
                         key.interestOps(SelectionKey.OP_WRITE);
                     }
                     else if(key.isWritable()){
-
+                        Method method = new Method();
                         method.processResponse(key);
-
                     }
-                    else {
+                    else
                         key.cancel();
-                    }
-
                 }
-
-            } catch (IOException e) {
+            }catch (Exception e) {
                 e.printStackTrace();
             }
-
         }
     }
 }

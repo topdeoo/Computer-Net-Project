@@ -13,9 +13,9 @@ public class Method {
 
     private final NIOFileHandler nioFileHandler;
 
-    private final static int SIZE = 4096;
+    RequestHeader requestHeader;
 
-    Headers headers;
+    ResponseHeader responseHeader;
 
     Method(){
         nioFileHandler = new NIOFileHandler();
@@ -24,14 +24,14 @@ public class Method {
     void processRequest( @NotNull SelectionKey key) throws IOException {
 
         SocketChannel channel = (SocketChannel) key.channel();
-        ByteBuffer byteBuffer = ByteBuffer.allocate(SIZE);
+        ByteBuffer byteBuffer = ByteBuffer.allocate(Utils.SIZE);
         channel.read(byteBuffer);
 
         byteBuffer.flip();
         String temp = StandardCharsets.UTF_8.decode(byteBuffer).toString();
         try{
-            Headers headers = Headers.parseHeader(temp);
-            key.attach(Optional.of(headers));
+            RequestHeader requestHeader = Utils.requestParseString(temp);
+            key.attach(Optional.of(requestHeader));
         }
         catch (Exception e){
             e.printStackTrace();
@@ -42,7 +42,7 @@ public class Method {
     void processResponse( @NotNull SelectionKey key ) throws IOException {
 
         SocketChannel channel = (SocketChannel) key.channel();
-        Optional<Headers> op = (Optional<Headers>) key.attachment();
+        Optional<RequestHeader> op = (Optional<RequestHeader>) key.attachment();
 
         if(op.isEmpty()){
             handle400(channel);
@@ -50,10 +50,11 @@ public class Method {
             return;
         }
 
-        headers = op.get();
+        requestHeader = op.get();
+        responseHeader = new ResponseHeader(requestHeader);
 
         try{
-            handle200(channel, headers.getUrl());
+            handle200(channel, requestHeader.getUrl());
         }
         catch (FileNotFoundException e){
             handle404(channel);
@@ -96,47 +97,67 @@ public class Method {
 
     }
 
-    private void handle200( @NotNull SocketChannel channel ,String url ) throws IOException {
-        ResponseHeaders headers = new ResponseHeaders(200);
+    private void handle501( SocketChannel channel ){
+        try{
+            handleError(channel, 501);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 
-        String method = this.headers.getMethod();
+    private void handle200( @NotNull SocketChannel channel ,String url ) throws IOException {
+        responseHeader.setCode(200);
+        String method = requestHeader.getMethod();
         if(method.equals(Utils.MethodName.GET.toString())){
 
-            if(url.equals(Utils.EXIT))
+            if(url.equals(Utils.EXIT)){
                 Server.flag.set(0);
+                System.exit(-1);
+            }
 
-            ByteBuffer responseBody = nioFileHandler.read(url);
-            headers.setContent_length(responseBody.capacity());
-            headers.setContent_type(Utils.queryFileType(url));
-            headers.setVersion(this.headers.getVersion());
-            ByteBuffer responseHead = ByteBuffer.wrap(headers.toString().getBytes(StandardCharsets.UTF_8));
+            ByteBuffer responseBody = nioFileHandler.read("web/request/" + url);
+            responseHeader.setContent_length(responseBody.capacity());
+            responseHeader.setContent_type(Utils.queryFileType(url));
+            ByteBuffer responseHead = ByteBuffer.wrap(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
 
             channel.write(new ByteBuffer[]{responseHead, responseBody});
         }
         else if(method.equals(Utils.MethodName.HEAD.toString())){
-            headers.setVersion(this.headers.getVersion());
-            ByteBuffer responseHead = ByteBuffer.wrap(headers.toString().getBytes(StandardCharsets.UTF_8));
+            ByteBuffer responseHead = ByteBuffer.wrap(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
             channel.write(responseHead);
         }
         else if(method.equals(Utils.MethodName.POST.toString())){
-            String data = this.headers.getData();
+            String data = requestHeader.getData();
+            responseHeader.setContent_length(0);
+            responseHeader.setContent_type("");
             nioFileHandler.write("db/data.txt", data);
-            headers.setVersion(this.headers.getVersion());
-            ByteBuffer responseHead = ByteBuffer.wrap(headers.toString().getBytes(StandardCharsets.UTF_8));
+            ByteBuffer responseHead = ByteBuffer.wrap(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
             channel.write(responseHead);
+        }
+        else if(method.equals(Utils.MethodName.PUT.toString())){
+            String data = Utils.mdToHtml(requestHeader.getData());
+            ByteBuffer responseBody = StandardCharsets.UTF_8.encode(data);
+            responseHeader.setContent_type(Utils.queryFileType(".html"));
+            responseHeader.setContent_length(responseBody.limit());
+            ByteBuffer responseHead = ByteBuffer.wrap(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
+            channel.write(new ByteBuffer[]{responseHead, responseBody});
+        }
+        else {
+            handle501(channel);
         }
 
     }
 
     private void handleError( @NotNull SocketChannel channel ,int code ) throws IOException {
-        ResponseHeaders headers = new ResponseHeaders(code);
+        responseHeader.setCode(code);
 
         String filename = "web/error/" + code + ".html";
         ByteBuffer responseBody = nioFileHandler.read(filename);
-        headers.setContent_length(responseBody.capacity());
-        headers.setContent_type(Utils.queryFileType(filename));
-        headers.setVersion(this.headers.getVersion());
-        ByteBuffer responseHead = ByteBuffer.wrap(headers.toString().getBytes(StandardCharsets.UTF_8));
+        responseHeader.setContent_length(responseBody.capacity());
+        responseHeader.setContent_type(Utils.queryFileType(filename));
+        requestHeader.setVersion(this.requestHeader.getVersion());
+        ByteBuffer responseHead = ByteBuffer.wrap(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
 
         channel.write(new ByteBuffer[]{responseHead, responseBody});
     }
