@@ -31,7 +31,7 @@ public class RequestHeader {
         this.content_length = header.content_length;
         this.content_type = header.content_type;
         this.headMap = new Hashtable<>(header.headMap);
-        this.data = new StringBuilder(header.getData());
+        this.data = new StringBuilder(header.data.toString());
     }
 
 
@@ -85,7 +85,7 @@ public class RequestHeader {
 
     @Override
     public String toString() {
-        StringBuilder sb = new StringBuilder();
+        StringBuilder sb = new StringBuilder(); //构造请求报文
 
         sb.append(String.format("%s %s %s\r\n", getMethod(), getUrl(), getVersion()));
         sb.append(String.format("Host: %s\r\n", getHost()));
@@ -112,7 +112,7 @@ class ResponseHeader extends RequestHeader {
 
     @Override
     public String toString() {
-        StringBuilder ret = new StringBuilder();
+        StringBuilder ret = new StringBuilder(); //构造回复报文
 
         ret.append(String.format("%s %d %s\r\n", getVersion(), code, code_meaning));
         ret.append(String.format("Server: %s\r\n", getServer()));
@@ -130,7 +130,7 @@ class ResponseHeader extends RequestHeader {
 
     public void setCode( int code ) {
         this.code = code;
-        this.code_meaning = Utils.queryCode(code);
+        this.code_meaning = Utils.queryCode(code); //查询状态码含义
     }
 
 }
