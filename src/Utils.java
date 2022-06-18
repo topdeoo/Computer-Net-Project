@@ -1,4 +1,7 @@
 import com.google.gson.Gson;
+import org.commonmark.node.Node;
+import org.commonmark.parser.Parser;
+import org.commonmark.renderer.html.HtmlRenderer;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.FileNotFoundException;
@@ -23,9 +26,11 @@ public class Utils {
 
     private static final Pattern CONTENT_TYPE = Pattern.compile("Content-Type.*");
 
-    public static String beanToJSONString(Object bean){
-        Gson gson = new Gson();
-        return gson.toJson(bean);
+    public static String mdToHtml(String md){
+        Parser parser = Parser.builder().build();
+        Node document = parser.parse(md);
+        HtmlRenderer renderer = HtmlRenderer.builder().build();
+        return renderer.render(document);
     }
 
     public static @NotNull RequestHeader requestParseString( @NotNull String temp){
@@ -45,7 +50,7 @@ public class Utils {
 
         parts = temp.split(CRLF);
 
-        int split = -1;
+        int split = 0;
         for(int i = 0; i < parts.length; i++){
             if(parts[i].equals("")){
                 split += 2;
@@ -73,7 +78,7 @@ public class Utils {
 
         }
 
-        requestHeader.setData(temp.substring(split + 1));
+        requestHeader.setData(temp.substring(split));
 
         return requestHeader;
     }
@@ -150,9 +155,9 @@ public class Utils {
 
         FileChannel channel = access.getChannel();
 
-        byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+        byte[] dataBytes = data.getBytes(StandardCharsets.UTF_8);
         byte[] content = new byte[length];
-        System.arraycopy(bytes ,0 ,content ,0 ,length);
+        System.arraycopy(dataBytes ,0 ,content ,0 ,length);
 
         ByteBuffer byteBuffer = ByteBuffer.wrap(content);
 
@@ -160,6 +165,7 @@ public class Utils {
     }
 
     public static String queryCode(int code){
+
         return CodeStatus.valueOf("STATUS_CODE_"+code).getStatus();
     }
 
