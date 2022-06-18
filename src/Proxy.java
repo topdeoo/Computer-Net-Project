@@ -1,8 +1,11 @@
+import org.jetbrains.annotations.Contract;
+import org.jetbrains.annotations.NotNull;
+
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Pattern;
@@ -22,7 +25,7 @@ public class Proxy {
             try {
                 Socket socket = serverSocket.accept();
 
-                HandlerPool.execute(new Handler(socket));
+                HandlerPool.execute(new ProxyHandler(socket));
 
             }
             catch (IOException e){
@@ -34,20 +37,33 @@ public class Proxy {
 
 }
 
-class Handler implements Runnable{
+class ProxyHandler implements Runnable{
 
-    private final Socket clientSocket;
+    private final Socket client;
 
-    private final Pattern HOST = Pattern.compile("Host.*");
+    private int port = 80;
 
-    private final Pattern CONTENT_LENGTH = Pattern.compile("Content-Length.*");
+    ProxyHandler( Socket socket){
+        this.client = socket;
+    }
 
-    private String Host;
+    private @NotNull String getMsg( @NotNull BufferedReader reader) throws IOException {
+        StringBuilder ret = new StringBuilder();
+        char[] chars = new char[Utils.SIZE];
+        do{
+            reader.read(chars);
+            ret.append(chars);
+            Arrays.fill(chars, '\0');
+        } while (reader.ready());
+        return ret.toString();
+    }
 
-    private int content_length;
-
-    Handler(Socket socket){
-        this.clientSocket = socket;
+    @Contract(pure = true)
+    private byte @NotNull [] getData( @NotNull String data,int length){
+        byte[] ret = new byte[length];
+        byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
+        System.arraycopy(bytes ,0 ,ret ,0 ,length);
+        return ret;
     }
 
     @Override
@@ -55,64 +71,32 @@ class Handler implements Runnable{
 
         try {
 
-            InputStream isClient = clientSocket.getInputStream();
-            BufferedReader brClient = new BufferedReader(new InputStreamReader(isClient));
-
-            ArrayList<String> contents = new ArrayList<>();
-
-            String temp;
-            while(!(temp = brClient.readLine()).equals("")){
-
-                contents.add(temp);
-                if(HOST.matcher(temp).matches())
-                    Host = temp.split(":")[1].substring(1);
-                else if(CONTENT_LENGTH.matcher(temp).matches())
-                    content_length = Integer.parseInt(temp.split(":")[1].substring(1));
-
+            String temp = getMsg(new BufferedReader(new InputStreamReader(client.getInputStream())));
+            RequestHeader requestHeader = Utils.requestParseString(temp);
+            String host = requestHeader.getHost();
+            int idx = host.indexOf(":");
+            if(idx != -1) {
+                port = Integer.parseInt(host.substring(idx + 1));
+                host = host.substring(0, idx);
             }
+            Socket server = new Socket(host, port);
+            String[] parts = requestHeader.getUrl().split("/");
+            requestHeader.setUrl("/" + parts[parts.length - 1]);
+            server.getOutputStream().write(requestHeader.toString().getBytes(StandardCharsets.UTF_8));
 
-            System.out.println(contents.get(0));
+            temp = getMsg(new BufferedReader(new InputStreamReader(server.getInputStream())));
+            ResponseHeader responseHeader = Utils.responseParseString(temp);
+            OutputStream os = client.getOutputStream();
+            os.write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
 
-            Socket toServer = new Socket(Host, 8081);
-            OutputStream osServer = toServer.getOutputStream();
+            byte[] data = getData(responseHeader.getData(), responseHeader.getContent_length());
+            os.write(data);
 
-            for(String s: contents)
-                osServer.write((s+"\r\n").getBytes(StandardCharsets.UTF_8));
-            osServer.write("\r\n".getBytes(StandardCharsets.UTF_8));
-            if(content_length > 0){
-                char[] post = new char[content_length];
-                assert brClient.read(post, 0, content_length) > 0;
-                osServer.write(new String(post).getBytes(StandardCharsets.UTF_8));
-            }
-
-            contents.clear();
-
-            InputStream isServer = toServer.getInputStream();
-            BufferedReader brServer = new BufferedReader(new InputStreamReader(isServer));
-
-            while (!(temp = brServer.readLine()).equals("")) {
-                contents.add(temp);
-                if(CONTENT_LENGTH.matcher(temp).matches())
-                    content_length = Integer.parseInt(temp.split(":")[1].substring(1));
-            }
-
-            OutputStream osClient = clientSocket.getOutputStream();
-            for(String s: contents)
-                osClient.write((s+"\r\n").getBytes(StandardCharsets.UTF_8));
-            osClient.write("\r\n".getBytes(StandardCharsets.UTF_8));
-
-            if(content_length > 0){
-                byte[] post = new byte[content_length];
-                if(isServer.read(post, 0, content_length) >= 0)
-                    osClient.write(post);
-
-            }
-
-            clientSocket.close();
-            toServer.close();
+            server.close();
+            client.close();
 
         }
-        catch (IOException e) {
+        catch (Exception e) {
             e.printStackTrace();
         }
 
