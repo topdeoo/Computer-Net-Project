@@ -86,7 +86,6 @@ class ProxyHandler implements Runnable{
                         requestHeader = Utils.requestParseByteBuffer(content);
 
                         host = requestHeader.getHost();
-                        port = 80;
                         int idx = host.indexOf(":");
                         if (idx != -1) {
                             port = Integer.parseInt(host.substring(idx + 1));
@@ -101,7 +100,7 @@ class ProxyHandler implements Runnable{
 
 
                         Selector serverSelector = Selector.open();
-                        server.register(serverSelector ,SelectionKey.OP_WRITE | SelectionKey.OP_READ);
+                        server.register(serverSelector , SelectionKey.OP_WRITE);
                         int flag = 1;
                         while (flag == 1) {
 

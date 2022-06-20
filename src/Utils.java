@@ -16,8 +16,6 @@ import java.util.regex.Pattern;
 
 public class Utils {
 
-    static final String SERVER_NAME = "java/jdk11.0";
-
     static final String EXIT = "shutdown";
 
     final static String CRLF = "\r\n";
@@ -27,7 +25,7 @@ public class Utils {
     private static final Pattern CONTENT_LENGTH = Pattern.compile("Content-Length.*");
 
     private static final Pattern CONTENT_TYPE = Pattern.compile("Content-Type.*");
-    public final static int SIZE = 4096;
+    public final static int SIZE = 1024;
 
     public static String mdToHtml(String md){
         Parser parser = Parser.builder().build();
