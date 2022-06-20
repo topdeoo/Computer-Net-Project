@@ -70,7 +70,7 @@ class Handler implements Runnable{
     public void register(SocketChannel sc) throws IOException {
         queue.add(()->{
             try {
-                sc.register(this.selector,SelectionKey.OP_READ,null);//boss
+                sc.register(this.selector,SelectionKey.OP_READ,null);
             } catch (ClosedChannelException e) {
                 e.printStackTrace();
             }

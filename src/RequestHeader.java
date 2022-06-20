@@ -121,12 +121,6 @@ class ResponseHeader extends RequestHeader {
         super(header);
     }
 
-    public ResponseHeader( int code){
-        this.code = code;
-        this.server = Utils.SERVER_NAME;
-        this.code_meaning = Utils.queryCode(code);
-    }
-
     public void setCode(int code){
         this.code = code;
         this.code_meaning = Utils.queryCode(code);
