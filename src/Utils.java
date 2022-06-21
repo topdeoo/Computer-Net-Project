@@ -96,9 +96,9 @@ public class Utils {
         responseHeader.setVersion(parts[0]);
         if(parts[1].equals("0"))
             responseHeader.setCode(500);
-        responseHeader.setCode(Integer.parseInt(parts[1]));
+        responseHeader.setCode(Integer.parseInt(parts[1])); //赋状态码
 
-        int split = -1;
+        int split = 0;
         parts = temp.split(Utils.CRLF);
 
         for(int i = 0;i < parts.length;i++){
@@ -124,7 +124,7 @@ public class Utils {
             responseHeader.putHeadMap(K ,V);
         }
 
-        responseHeader.setData(temp.substring(split + 1));
+        responseHeader.setData(temp.substring(split));
 
         return responseHeader;
     }
