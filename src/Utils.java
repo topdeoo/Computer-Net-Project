@@ -54,7 +54,7 @@ public class Utils {
                 split += 2; //跳过\r\n
                 break;
             }
-            split += (2 + parts.length); //增加\r\n与首部行长度
+            split += (2 + parts[i].length()); //增加\r\n与首部行长度
             int idx = parts[i].indexOf(":");
             if(idx == -1)
                 continue; //去除第一行

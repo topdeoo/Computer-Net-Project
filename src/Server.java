@@ -13,7 +13,6 @@ public class Server {
 
     private static final int PORT = 8081;
 
-
     public static void main( String[] args ) throws IOException {
         ExecutorService ThreadPool = Executors.newFixedThreadPool(200); //开辟一个固定大小的线程池
         ServerSocket serverSocket = new ServerSocket(PORT);
@@ -105,7 +104,7 @@ class Handler implements Runnable{
                 Utils.NIOWriteFile("db/data.txt", data, requestHeader.getContent_length()); //将data写入数据库db（伪）
                 socket.getOutputStream().write(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
                 break;
-                case "PUT":
+            case "PUT":
                 Utils.writeResponse(responseHeader, 200);
                 responseHeader.setContent_type(Utils.queryFileType(".html"));
                 responseBody = Utils.mdToHtml(responseHeader.getData()).getBytes(StandardCharsets.UTF_8);
