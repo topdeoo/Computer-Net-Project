@@ -96,7 +96,8 @@ public class Utils {
         responseHeader.setVersion(parts[0]);
         if(parts[1].equals("0"))
             responseHeader.setCode(500);
-        responseHeader.setCode(Integer.parseInt(parts[1]));
+        else
+            responseHeader.setCode(Integer.parseInt(parts[1]));
 
         int split = -1;
         parts = temp.split(Utils.CRLF);
