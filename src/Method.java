@@ -23,15 +23,16 @@ public class Method {
 
     void processRequest( @NotNull SelectionKey key) throws IOException {
 
-        SocketChannel channel = (SocketChannel) key.channel();
-        ByteBuffer byteBuffer = ByteBuffer.allocate(Utils.SIZE);
-        channel.read(byteBuffer);
+        SocketChannel channel = (SocketChannel) key.channel(); //获取传输报文的通道
+        ByteBuffer byteBuffer = ByteBuffer.allocate(Utils.SIZE); //申请一个固定大小的缓冲区
+        channel.read(byteBuffer); //将报文写至缓冲区
 
-        byteBuffer.flip();
-        String temp = StandardCharsets.UTF_8.decode(byteBuffer).toString();
+        byteBuffer.flip(); //翻转读写方式
+        String temp = StandardCharsets.UTF_8.decode(byteBuffer).toString(); //将报文格式转变为string
         try{
             RequestHeader requestHeader = Utils.requestParseString(temp);
             key.attach(Optional.of(requestHeader));
+            //设置key的attachment字段，而一个key和一个channel绑定，即可后续从通道中获取该请求报文
         }
         catch (Exception e){
             e.printStackTrace();
@@ -42,11 +43,11 @@ public class Method {
     void processResponse( @NotNull SelectionKey key ) throws IOException {
 
         SocketChannel channel = (SocketChannel) key.channel();
-        Optional<RequestHeader> op = (Optional<RequestHeader>) key.attachment();
+        Optional<RequestHeader> op = (Optional<RequestHeader>) key.attachment(); //请求报文
 
         if(op.isEmpty()){
-            handle400(channel);
-            channel.close();
+            handle400(channel); //错误请求
+            channel.close(); //关闭通道
             return;
         }
 
@@ -120,7 +121,7 @@ public class Method {
             responseHeader.setContent_length(responseBody.capacity());
             responseHeader.setContent_type(Utils.queryFileType(url));
             ByteBuffer responseHead = ByteBuffer.wrap(responseHeader.toString().getBytes(StandardCharsets.UTF_8));
-
+            //将string格式转变为butebuffer
             channel.write(new ByteBuffer[]{responseHead, responseBody});
         }
         else if(method.equals(Utils.MethodName.HEAD.toString())){

@@ -58,6 +58,7 @@ class ProxyHandler implements Runnable{
     ResponseHeader responseHeader;
 
     ProxyHandler(SocketChannel client){
+
         this.client = client;
     }
 
@@ -69,7 +70,7 @@ class ProxyHandler implements Runnable{
             client.configureBlocking(false);
             Selector clientSelector = Selector.open();
             client.register(clientSelector, SelectionKey.OP_READ);
-            int over = 1;
+            int over = 1; //标记是否与客户端断开通道
             while (over == 1) {
                 clientSelector.select();
                 Iterator<SelectionKey> clientIt = clientSelector.selectedKeys().iterator();
@@ -77,15 +78,15 @@ class ProxyHandler implements Runnable{
                     SelectionKey clientKey = clientIt.next();
                     clientIt.remove();
 
-                    if (clientKey.isReadable()) {
+                    if (clientKey.isReadable()) { //获取到客户端的请求报文
 
-                        SocketChannel clientChannel = (SocketChannel) clientKey.channel();
+                        SocketChannel clientChannel = (SocketChannel) clientKey.channel(); //获取与客户端连接的通道
                         ByteBuffer content = ByteBuffer.allocate(Utils.SIZE);
                         clientChannel.read(content);
                         content.flip();
-                        requestHeader = Utils.requestParseByteBuffer(content);
+                        requestHeader = Utils.requestParseByteBuffer(content); //解析请求报文
 
-                        host = requestHeader.getHost();
+                        host = requestHeader.getHost(); //获取目的服务器与处理url
                         int idx = host.indexOf(":");
                         if (idx != -1) {
                             port = Integer.parseInt(host.substring(idx + 1));
@@ -94,14 +95,13 @@ class ProxyHandler implements Runnable{
                             requestHeader.setUrl(parts[ parts.length - 1 ]);
                         }
 
-                        SocketChannel server = SocketChannel.open();
+                        SocketChannel server = SocketChannel.open(); //与服务器建立通道
                         server.connect(new InetSocketAddress(host, port));
                         server.configureBlocking(false);
 
-
                         Selector serverSelector = Selector.open();
-                        server.register(serverSelector , SelectionKey.OP_WRITE);
-                        int flag = 1;
+                        server.register(serverSelector , SelectionKey.OP_WRITE); //向该selector注册一个可写的事件
+                        int flag = 1; //标记是否与服务器断开通道
                         while (flag == 1) {
 
                             serverSelector.select();
@@ -111,15 +111,15 @@ class ProxyHandler implements Runnable{
 
                                 SelectionKey serverKey = serverIt.next();
                                 serverIt.remove();
-                                if (serverKey.isWritable()) {
+                                if (serverKey.isWritable()) { //即代理向服务器传送请求报文
                                     SocketChannel serverChannel = (SocketChannel) serverKey.channel();
                                     ByteBuffer trans = ByteBuffer.wrap(
                                             requestHeader.trans().getBytes(StandardCharsets.UTF_8)
                                     );
                                     serverChannel.write(trans);
-                                    serverKey.interestOps(SelectionKey.OP_READ);
+                                    serverKey.interestOps(SelectionKey.OP_READ); //改为可读
                                 }
-                                else if (serverKey.isReadable()) {
+                                else if (serverKey.isReadable()) { //即收到服务器的响应报文
                                     SocketChannel serverChannel = (SocketChannel) serverKey.channel();
                                     ByteBuffer response = ByteBuffer.allocate(Utils.SIZE);
                                     serverChannel.read(response);
@@ -132,7 +132,7 @@ class ProxyHandler implements Runnable{
                             }
                         }
 
-                        clientKey.interestOps(SelectionKey.OP_WRITE);
+                        clientKey.interestOps(SelectionKey.OP_WRITE); //改为可写，向客户端传回响应报文
                     } else if (clientKey.isWritable()) {
                         SocketChannel clientChannel = (SocketChannel) clientKey.channel();
                         ByteBuffer response = ByteBuffer.wrap(responseHeader.trans().getBytes(StandardCharsets.UTF_8));

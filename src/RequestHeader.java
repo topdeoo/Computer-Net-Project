@@ -93,7 +93,7 @@ public class RequestHeader {
                 '}';
     }
 
-    public String trans(){
+    public String trans(){ //写请求报文
         StringBuilder sb = new StringBuilder();
 
         sb.append(String.format("%s %s %s\r\n", getMethod(), getUrl(), getVersion()));
