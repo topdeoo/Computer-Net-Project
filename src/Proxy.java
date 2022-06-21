@@ -59,9 +59,9 @@ class ProxyHandler implements Runnable{
 
     @Contract(pure = true)
     private byte @NotNull [] getData( @NotNull String data,int length){ //去除报文内容中的null
-        byte[] ret = new byte[length];
-        byte[] bytes = data.getBytes(StandardCharsets.UTF_8);
-        System.arraycopy(bytes ,0 ,ret ,0 ,length);
+        byte[] ret = new byte[length]; //开一个等同报文体长度的字节数组
+        byte[] bytes = data.getBytes(StandardCharsets.UTF_8); //将捕获的报文体内容重新转为字节格式
+        System.arraycopy(bytes ,0 ,ret ,0 ,length); //将报文体内容复制到新开的数组中
         return ret;
     }
 
