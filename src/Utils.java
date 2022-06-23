@@ -17,7 +17,7 @@ public class Utils {
 
     public static final String CRLF = "\r\n";
 
-    public static final String EXIT = "web/request/shutdown";
+    public static final String EXIT = "web/request//shutdown";
     public static final int SIZE = 1024;
 
     private static final Pattern HOST = Pattern.compile("Host.*");
