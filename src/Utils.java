@@ -90,6 +90,11 @@ public class Utils {
         header.setCode(code);
     }
 
+    public static void checkResponse( @NotNull ResponseHeader header ){
+        if(header.getCode() == 0)
+            header.setCode(500);
+    }
+
     public static byte @NotNull [] NIOReadFile( String url ) throws IOException {
         RandomAccessFile access = new RandomAccessFile(url, "r"); //随机读文件
         FileChannel channel = access.getChannel(); //打开文件通道

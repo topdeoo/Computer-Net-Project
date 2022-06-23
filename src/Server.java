@@ -143,6 +143,7 @@ class Handler implements Runnable{
 
             requestHeader = Utils.requestParseString(temp); //解析报文
             responseHeader = new ResponseHeader(requestHeader); //创建报文头
+            Utils.checkResponse(responseHeader);
 
             try {
                 Handler.handle200(socket); //请求成功

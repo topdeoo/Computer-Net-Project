@@ -133,4 +133,8 @@ class ResponseHeader extends RequestHeader {
         this.code_meaning = Utils.queryCode(code); //查询状态码含义
     }
 
+    public int getCode(){
+        return code;
+    }
+
 }
