@@ -1,3 +1,6 @@
-.idea/
+.idea/*
 
 Computer Net Project.iml
+
+db/data.txt
+
